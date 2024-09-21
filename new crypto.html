@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Price Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        img {
+            width: 30px;
+            height: 30px;
+        }
+        .up {
+            color: green;
+        }
+        .down {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Crypto Price Tracker</h1>
+    <div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Icon</th>
+                    <th>Token Name</th>
+                    <th>Symbol</th>
+                    <th>Price (USD)</th>
+                    <th>Change</th>
+                    <th>Listing Date</th>
+                    <th>All-Time High (USD)</th>
+                </tr>
+            </thead>
+            <tbody id="crypto-data"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let previousPrices = {};
+
+        async function getPrices() {
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=100&page=1');
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const coins = await response.json();
+                const tableBody = document.getElementById('crypto-data');
+                tableBody.innerHTML = '';
+
+                for (const coin of coins) {
+                    const currentPrice = coin.current_price;
+                    const previousPrice = previousPrices[coin.id] || currentPrice;
+
+                    const changeIndicator = currentPrice > previousPrice ? "↑" : currentPrice < previousPrice ? "↓" : "—";
+                    const changeClass = currentPrice > previousPrice ? "up" : currentPrice < previousPrice ? "down" : "";
+
+                    const coinResponse = await fetch(`https://api.coingecko.com/api/v3/coins/${coin.id}`);
+                    const coinData = await coinResponse.json();
+                    const listingDate = coinData.genesis_date ? new Date(coinData.genesis_date).toLocaleDateString() : 'N/A';
+
+                    previousPrices[coin.id] = currentPrice;
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><img src="${coin.image}" alt="${coin.name} icon"></td>
+                        <td>${coin.name}</td>
+                        <td>${coin.symbol.toUpperCase()}</td>
+                        <td>$${currentPrice.toFixed(2)}</td>
+                        <td class="${changeClass}">${changeIndicator}</td>
+                        <td>${listingDate}</td>
+                        <td>$${coin.ath || 'N/A'}</td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Initial call to load data
+        getPrices();
+        // Set interval to update data every 30 seconds
+        setInterval(getPrices, 30000);
+    </script>
+</body>
+</html>
